@@ -1,7 +1,7 @@
 body {
   margin: 0;
   min-height: 100vh;
-  background: linear-gradient(180deg, #4f6b92 0%, #334155 50%, #1e293b 100%);
+  background: linear-gradient(180deg, #6ea8ff 0%, #4f7ac7 40%, #23395d 100%);
 }
 
 .app {
@@ -35,8 +35,7 @@ h1 {
   cursor: pointer;
   font-size: 20px;
   color: white;
-  background: rgba(255, 255, 255, 0.12);
-  box-shadow: none;
+  background: rgba(255, 255, 255, 0.16);
 }
 
 .compass {
@@ -45,19 +44,40 @@ h1 {
   border-radius: 50%;
   margin: 35px auto;
   position: relative;
-  background: radial-gradient(circle, #182235 0%, #101827 65%, #070b12 100%);
-  border: 8px solid rgba(255, 255, 255, 0.18);
+  background: radial-gradient(
+    circle,
+    #6b8bb8 0%,
+    #4f6b92 40%,
+    #334155 75%,
+    #1e293b 100%
+  );
+  border: 8px solid rgba(255, 255, 255, 0.28);
   box-shadow:
-    0 35px 60px rgba(0, 0, 0, 0.55),
-    0 15px 25px rgba(0, 0, 0, 0.35),
-    inset 0 0 25px rgba(255, 255, 255, 0.08);
+    0 35px 60px rgba(0, 0, 0, 0.4),
+    0 15px 25px rgba(0, 0, 0, 0.25),
+    inset 0 0 35px rgba(255, 255, 255, 0.15);
+}
+
+.compass::after {
+  content: "";
+  position: absolute;
+  width: 180px;
+  height: 25px;
+  bottom: -35px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.45);
+  filter: blur(18px);
+  border-radius: 50%;
+  z-index: -1;
 }
 
 .direction {
   position: absolute;
   font-weight: bold;
   font-size: 18px;
-  color: #d7e3ff;
+  color: #f8fafc;
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
 }
 
 .n {
@@ -87,42 +107,64 @@ h1 {
 .needle {
   position: absolute;
   inset: 0;
-  transition: transform 0.9s cubic-bezier(0.2, 0.8, 0.2, 1);
+  transition: transform 0.35s ease;
+  transform-origin: center;
 }
 
-.needle-line {
+.compass-arrow {
   position: absolute;
-  width: 6px;
-  height: 95px;
-  background: linear-gradient(to top, #ff4d4d, #ffd1d1);
-  left: 50%;
-  top: 45px;
-  transform: translateX(-50%);
-  border-radius: 999px;
+  inset: 0;
 }
 
-.needle-head {
+.arrow-top {
   position: absolute;
   left: 50%;
-  top: 28px;
+  top: 18px;
   transform: translateX(-50%);
   width: 0;
   height: 0;
-  border-left: 16px solid transparent;
-  border-right: 16px solid transparent;
-  border-bottom: 30px solid #ff4d4d;
+  border-left: 14px solid transparent;
+  border-right: 14px solid transparent;
+  border-bottom: 120px solid currentColor;
+  filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.18));
+}
+
+.arrow-bottom {
+  position: absolute;
+  left: 50%;
+  bottom: 18px;
+  transform: translateX(-50%) rotate(180deg);
+  width: 0;
+  height: 0;
+  border-left: 10px solid transparent;
+  border-right: 10px solid transparent;
+  border-bottom: 80px solid rgba(255, 255, 255, 0.35);
+}
+
+.north-needle {
+  color: #2563eb;
+}
+
+.north-needle.aligned {
+  color: #22c55e;
+}
+
+.jerusalem-needle {
+  color: #ef4444;
 }
 
 .center-dot {
-  width: 22px;
-  height: 22px;
-  background: white;
-  border: 5px solid #ff4d4d;
+  width: 28px;
+  height: 28px;
+  background: radial-gradient(circle, #ffffff, #cbd5e1);
+  border: 4px solid #475569;
   border-radius: 50%;
   position: absolute;
   left: 50%;
   top: 50%;
   transform: translate(-50%, -50%);
+  box-shadow: 0 0 12px rgba(255, 255, 255, 0.25);
+  z-index: 5;
 }
 
 .main-btn {
@@ -138,71 +180,33 @@ h1 {
   transition: all 0.25s ease;
 }
 
-.main-btn:hover {
-  transform: translateY(-3px) scale(1.02);
+.main-btn:hover,
+.info-btn:hover {
+  transform: translateY(-2px);
 }
 
 .main-btn:active {
   transform: scale(0.97);
 }
 
-.modal {
-  width: 360px;
-  max-width: 90%;
-  padding: 28px;
-  border-radius: 24px;
-  background: #111827;
-  color: white;
-  text-align: right;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.55);
-}
-
-.modal h2 {
-  margin-top: 0;
-  margin-bottom: 18px;
-  font-size: 24px;
-}
-
-.modal p {
-  color: #d1d5db;
-  font-size: 17px;
-  line-height: 1.8;
-  margin: 12px 0;
-}
-
-.close-btn {
-  margin-top: 18px;
-  width: 100%;
-  font-size: 16px;
-  font-weight: 600;
-  padding: 12px 22px;
-  border: none;
-  border-radius: 16px;
-  color: white;
-  background: linear-gradient(135deg, #374151, #111827);
-  cursor: pointer;
+p {
+  color: #e5edff;
+  font-size: 18px;
 }
 
 .side-panel {
   position: fixed;
   top: 0;
   right: -340px;
-
   width: 320px;
   height: 100vh;
-
   background: #111827;
-
   padding: 28px;
-
   box-sizing: border-box;
-
   transition: right 0.35s ease;
-
   box-shadow: -10px 0 30px rgba(0, 0, 0, 0.35);
-
   z-index: 100;
+  text-align: right;
 }
 
 .side-panel.open {
@@ -217,9 +221,18 @@ h1 {
 .side-panel p {
   color: #d1d5db;
   line-height: 1.8;
+  font-size: 17px;
 }
 
 .close-btn {
   margin-top: 20px;
   width: 100%;
+  font-size: 16px;
+  font-weight: 600;
+  padding: 12px 22px;
+  border: none;
+  border-radius: 16px;
+  color: white;
+  background: linear-gradient(135deg, #374151, #111827);
+  cursor: pointer;
 }

@@ -27,11 +27,43 @@ function calculateBearing(fromLat, fromLng, toLat, toLng) {
 }
 
 export default function App() {
-  const [angle, setAngle] = useState(0);
   const [status, setStatus] = useState("לחץ כדי לכוון להר הבית");
   const [showInfo, setShowInfo] = useState(false);
 
+  const [heading, setHeading] = useState(null);
+  const [bearing, setBearing] = useState(null);
+
+  const isNorthAligned = heading !== null && (heading <= 5 || heading >= 355);
+
+  async function startCompass() {
+    try {
+      if (
+        typeof DeviceOrientationEvent !== "undefined" &&
+        typeof DeviceOrientationEvent.requestPermission === "function"
+      ) {
+        const permission = await DeviceOrientationEvent.requestPermission();
+
+        if (permission !== "granted") {
+          setStatus("צריך לאשר גישה לחיישן המצפן");
+          return;
+        }
+      }
+
+      window.addEventListener("deviceorientation", (event) => {
+        const compassHeading = event.webkitCompassHeading ?? 360 - event.alpha;
+
+        if (compassHeading !== null && !Number.isNaN(compassHeading)) {
+          setHeading(compassHeading);
+        }
+      });
+    } catch {
+      setStatus("לא ניתן להפעיל את חיישן המצפן במכשיר הזה");
+    }
+  }
+
   function pointToJerusalem() {
+    startCompass();
+
     if (!navigator.geolocation) {
       setStatus("הדפדפן לא תומך במיקום");
       return;
@@ -43,15 +75,17 @@ export default function App() {
       (position) => {
         const { latitude, longitude } = position.coords;
 
-        const bearing = calculateBearing(
+        const newBearing = calculateBearing(
           latitude,
           longitude,
           TEMPLE_MOUNT.lat,
           TEMPLE_MOUNT.lng,
         );
 
-        setAngle(bearing);
-        setStatus(`הכיוון להר הבית: ${bearing.toFixed(1)}°`);
+        setBearing(newBearing);
+        setStatus(
+          "סובב את הטלפון עד שהחץ הכחול יהפוך לירוק. החץ האדום מצביע להר הבית.",
+        );
       },
       () => {
         setStatus("לא ניתן לקבל מיקום. צריך לאשר הרשאת GPS");
@@ -67,38 +101,58 @@ export default function App() {
     <div className="app">
       <div className="header">
         <h1>🧭 כוון להר הבית</h1>
-
-        <button className="info-btn" onClick={() => setShowInfo(true)}>
-          ℹ️
-        </button>
       </div>
+
       <div className={`side-panel ${showInfo ? "open" : ""}`}>
         <h2>הוראות שימוש</h2>
 
-        <p>🧭 כוון את המכשיר כך שהאות N תפנה לצפון.</p>
-        <p>📍 לחץ על "כוון אותי להר הבית".</p>
+        <p>🧭 לחץ על הכפתור כדי להפעיל GPS וחיישן מצפן.</p>
+        <p>📱 סובב את הטלפון עד שהחץ הכחול יהפוך לירוק.</p>
         <p>🏛️ החץ האדום יצביע לכיוון הר הבית בירושלים.</p>
 
         <button className="close-btn" onClick={() => setShowInfo(false)}>
-          סגור
+          הבנתי
         </button>
       </div>
+
       <div className="compass">
         <div className="direction n">N</div>
         <div className="direction e">E</div>
         <div className="direction s">S</div>
         <div className="direction w">W</div>
 
-        <div className="needle" style={{ transform: `rotate(${angle}deg)` }}>
-          <div className="needle-line"></div>
-          <div className="needle-head"></div>
-        </div>
+        {heading !== null && (
+          <div
+            className={`needle north-needle ${isNorthAligned ? "aligned" : ""}`}
+            style={{ transform: `rotate(${-heading}deg)` }}
+          >
+            <div className="compass-arrow">
+              <div className="arrow-top"></div>
+              <div className="arrow-bottom"></div>
+            </div>
+          </div>
+        )}
+
+        {bearing !== null && (
+          <div
+            className="needle jerusalem-needle"
+            style={{ transform: `rotate(${bearing}deg)` }}
+          >
+            <div className="compass-arrow">
+              <div className="arrow-top"></div>
+              <div className="arrow-bottom"></div>
+            </div>
+          </div>
+        )}
 
         <div className="center-dot"></div>
       </div>
 
       <button className="main-btn" onClick={pointToJerusalem}>
-        🧭 כוון אותי
+        🧭 כוון אותי להר הבית
+      </button>
+      <button className="info-btn" onClick={() => setShowInfo(!showInfo)}>
+        {showInfo ? "✕" : "ℹ️"}
       </button>
 
       <p>{status}</p>
