@@ -687,3 +687,86 @@ a {
 .singleAction .linkButton {
   width: 100%;
 }
+
+
+.modeSwitch {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 5px;
+  width: min(280px, 100%);
+  margin: 0 auto 14px;
+  padding: 5px;
+  border: 1px solid rgba(25, 97, 116, 0.1);
+  border-radius: 17px;
+  background: rgba(255, 255, 255, 0.78);
+}
+
+.modeSwitch button {
+  min-height: 38px;
+  border: 0;
+  border-radius: 12px;
+  color: #546474;
+  background: transparent;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.modeSwitch button.active {
+  color: #ffffff;
+  background: linear-gradient(135deg, #1389ad, #31bfd3);
+  box-shadow: 0 8px 18px rgba(19, 137, 173, 0.18);
+}
+
+.manualCompassPanel {
+  display: grid;
+  gap: 10px;
+  margin: 0 0 14px;
+  padding: 14px;
+  border: 1px solid rgba(25, 97, 116, 0.1);
+  border-radius: 18px;
+  background: rgba(235, 248, 251, 0.86);
+}
+
+.manualCompassPanel div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: #56677a;
+}
+
+.manualCompassPanel strong {
+  color: #142034;
+}
+
+.manualCompassPanel span {
+  color: #087b9f;
+  font-weight: 900;
+}
+
+.manualCompassPanel input[type="range"] {
+  width: 100%;
+  accent-color: #1389ad;
+}
+
+.manualCompassPanel p {
+  margin: 0;
+  color: #617082;
+  font-size: 13px;
+}
+
+
+.manualEditable {
+  cursor: grab;
+  touch-action: none;
+}
+
+.manualEditable:active {
+  cursor: grabbing;
+}
+
+.manualEditable::selection {
+  background: transparent;
+}

@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import "./App.css";
 
+const KIPA_ZMANIM_URL = "https://www.kipa.co.il/%D7%96%D7%9E%D7%A0%D7%99-%D7%94%D7%99%D7%95%D7%9D/";
+
 const JERUSALEM = {
   lat: 31.7683,
   lng: 35.2137,
@@ -125,6 +127,8 @@ function buildHebcalPageUrl(location, date) {
 
 export default function App() {
   const [heading, setHeading] = useState(0);
+  const [manualHeading, setManualHeading] = useState(0);
+  const [compassMode, setCompassMode] = useState("auto");
   const [rawHeading, setRawHeading] = useState(null);
   const [hasCompass, setHasCompass] = useState(false);
   const [jerusalemBearing, setJerusalemBearing] = useState(null);
@@ -220,6 +224,7 @@ export default function App() {
   async function activateCompass() {
     try {
       if (
+        compassMode === "auto" &&
         typeof DeviceOrientationEvent !== "undefined" &&
         typeof DeviceOrientationEvent.requestPermission === "function"
       ) {
@@ -244,7 +249,7 @@ export default function App() {
           );
 
           setJerusalemBearing(bearing);
-          setStatus("המצפן פעיל - החץ הזהוב מצביע לירושלים");
+          setStatus(compassMode === "manual" ? "כיוון ירושלים חושב - כוון את הצפון ידנית" : "המצפן פעיל - החץ הזהוב מצביע לירושלים");
         },
         () => {
           setStatus("לא הצלחתי לקבל מיקום. בדוק הרשאות GPS");
@@ -311,14 +316,43 @@ export default function App() {
     );
   }
 
-  const northArrowRotation = normalizeAngle(-heading);
+  function switchCompassMode(mode) {
+    setCompassMode(mode);
+    if (mode === "manual") {
+      setStatus("מצב ידני פעיל - סובב את המחוון עד שה-N פונה לצפון");
+    } else {
+      setStatus("מצב אוטומטי פעיל - לחץ להפעלת חיישני המצפן");
+    }
+  }
+
+  function updateManualHeading(value) {
+    setManualHeading(normalizeAngle(Number(value)));
+  }
+
+  function setManualHeadingFromPointer(event) {
+    if (!isManualMode) return;
+
+    const rect = event.currentTarget.getBoundingClientRect();
+    const centerX = rect.left + rect.width / 2;
+    const centerY = rect.top + rect.height / 2;
+    const x = event.clientX - centerX;
+    const y = event.clientY - centerY;
+    const angle = normalizeAngle((Math.atan2(x, -y) * 180) / Math.PI);
+
+    setManualHeading(angle);
+  }
+
+  const effectiveHeading = compassMode === "manual" ? manualHeading : heading;
+  const isManualMode = compassMode === "manual";
+
+  const northArrowRotation = normalizeAngle(-effectiveHeading);
   const jerusalemArrowRotation =
-    jerusalemBearing === null ? 0 : jerusalemBearing - heading;
+    jerusalemBearing === null ? 0 : jerusalemBearing - effectiveHeading;
 
   const jerusalemRelative =
     jerusalemBearing === null
       ? null
-      : shortestAngleDiff(heading, jerusalemBearing);
+      : shortestAngleDiff(effectiveHeading, jerusalemBearing);
 
   const isFacingJerusalem =
     jerusalemRelative !== null && Math.abs(jerusalemRelative) <= 5;
@@ -362,11 +396,53 @@ export default function App() {
             </div>
 
             <button className="mainButton topAction" onClick={activateCompass}>
-              הפעל כיוון לירושלים
+              {isManualMode ? "חשב כיוון לירושלים" : "הפעל כיוון לירושלים"}
             </button>
 
+            <div className="modeSwitch" aria-label="בחירת מצב מצפן">
+              <button
+                type="button"
+                className={compassMode === "auto" ? "active" : ""}
+                onClick={() => switchCompassMode("auto")}
+              >
+                אוטומטי
+              </button>
+              <button
+                type="button"
+                className={compassMode === "manual" ? "active" : ""}
+                onClick={() => switchCompassMode("manual")}
+              >
+                ידני
+              </button>
+            </div>
+
+            {isManualMode && (
+              <div className="manualCompassPanel">
+                <div>
+                  <strong>כיוון צפון ידני</strong>
+                  <span>{Math.round(manualHeading)}°</span>
+                </div>
+                <input
+                  type="range"
+                  min="0"
+                  max="359"
+                  value={manualHeading}
+                  onChange={(event) => updateManualHeading(event.target.value)}
+                  aria-label="כיוון צפון ידני"
+                />
+                <p>גרור את המצפן או הזז את המחוון עד שהאות N פונה לצפון אמיתי.</p>
+              </div>
+            )}
+
             <div className="compassWrap">
-              <div className="compass" aria-label="מצפן ירושלים">
+              <div
+                className={isManualMode ? "compass manualEditable" : "compass"}
+                aria-label="מצפן ירושלים"
+                onPointerDown={setManualHeadingFromPointer}
+                onPointerMove={(event) => {
+                  if (event.buttons === 1) setManualHeadingFromPointer(event);
+                }}
+              >
                 <div className="compassGlass" />
                 <div className="marker north">N</div>
                 <div className="marker east">E</div>
@@ -423,8 +499,8 @@ export default function App() {
 
             <div className="infoPanel">
               <div>
-                <span>כיוון הטלפון</span>
-                <strong>{Math.round(heading)}°</strong>
+                <span>{isManualMode ? "כיוון ידני" : "כיוון הטלפון"}</span>
+                <strong>{Math.round(effectiveHeading)}°</strong>
               </div>
 
               <div>
@@ -432,18 +508,22 @@ export default function App() {
                 <strong>{status}</strong>
               </div>
 
-              <div>
-                <span>מקור החיישן</span>
-                <strong>
-                  {sensorSource}
-                  {sensorAccuracy !== null ? " - דיוק +/-" + sensorAccuracy + "°" : ""}
-                </strong>
-              </div>
+              {!isManualMode && (
+                <div>
+                  <span>מקור החיישן</span>
+                  <strong>
+                    {sensorSource}
+                    {sensorAccuracy !== null ? " - דיוק +/-" + sensorAccuracy + "°" : ""}
+                  </strong>
+                </div>
+              )}
 
-              <div>
-                <span>כיול ידני</span>
-                <strong>{Math.round(shortestAngleDiff(0, calibrationOffset))}°</strong>
-              </div>
+              {!isManualMode && (
+                <div>
+                  <span>כיול ידני</span>
+                  <strong>{Math.round(shortestAngleDiff(0, calibrationOffset))}°</strong>
+                </div>
+              )}
 
               {jerusalemRelative !== null && (
                 <div>
@@ -455,14 +535,14 @@ export default function App() {
                 </div>
               )}
 
-              {!hasCompass && (
+              {!isManualMode && !hasCompass && (
                 <p className="warning">
                   במחשב רגיל לא תמיד יש חיישן מצפן. בטלפון, אשר הרשאות מיקום
                   וחיישנים כדי לקבל כיוון מדויק.
                 </p>
               )}
 
-              {sensorSource.includes("יחסי") && hasCompass && (
+              {!isManualMode && sensorSource.includes("יחסי") && hasCompass && (
                 <p className="warning">
                   החיישן במכשיר הזה יחסי, ולכן ייתכן זיוף. כוון את ראש הטלפון
                   לצפון ולחץ “כוון כצפון”.
@@ -470,13 +550,15 @@ export default function App() {
               )}
             </div>
 
-            <div className="calibrationPanel">
+            {!isManualMode && (
+              <div className="calibrationPanel">
               <p>אם החץ הכחול לא יושב על צפון, כוון את ראש הטלפון לצפון ולחץ כיול.</p>
               <div className="calibrationActions simple">
                 <button type="button" onClick={calibrateNorth}>כוון כצפון</button>
                 <button type="button" onClick={resetCalibration}>איפוס כיול</button>
               </div>
             </div>
+            )}
           </section>
 
           <section
@@ -536,8 +618,8 @@ export default function App() {
             )}
 
             <p className="sourceNote">
-              הזמנים נטענים מ-Hebcal. בחירת עיר לא מבקשת הרשאת מיקום, והרשימה המלאה זמינה כאן באפליקציה.
-              <a href={hebcalPageUrl} target="_blank" rel="noreferrer"> מקור: Hebcal</a>
+              זמני היום מוצגים באפליקציה, ולבדיקה מלאה ומוכרת אפשר לפתוח את אתר כיפה.
+              <a href={KIPA_ZMANIM_URL} target="_blank" rel="noreferrer"> מקור: כיפה</a>
             </p>
           </section>
         </div>
