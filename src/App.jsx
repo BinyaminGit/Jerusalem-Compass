@@ -114,6 +114,33 @@ function buildHebcalApiUrl(location, date) {
   return "https://www.hebcal.com/zmanim?" + params.toString();
 }
 
+function buildShabbatApiUrl(location) {
+  const params = new URLSearchParams({
+    cfg: "json",
+    latitude: String(location.lat),
+    longitude: String(location.lng),
+    tzid: "Asia/Jerusalem",
+    M: "on",
+    leyning: "off",
+    lg: "he",
+  });
+
+  return "https://www.hebcal.com/shabbat?" + params.toString();
+}
+
+function getShabbatInfo(data) {
+  const items = data?.items || [];
+  const candles = items.find((item) => item.category === "candles");
+  const havdalah = items.find((item) => item.category === "havdalah");
+  const parsha = items.find((item) => item.category === "parashat");
+
+  return {
+    parsha: parsha?.hebrew || parsha?.title?.replace("Parashat ", "") || "השבוע",
+    candles: candles?.date || null,
+    havdalah: havdalah?.date || null,
+  };
+}
+
 function buildHebcalPageUrl(location, date) {
   const params = new URLSearchParams({
     date,
@@ -135,6 +162,7 @@ export default function App() {
   const [status, setStatus] = useState("לחץ על הכפתור כדי להפעיל את המצפן");
   const [activeView, setActiveView] = useState("compass");
   const [zmanim, setZmanim] = useState(null);
+  const [shabbatInfo, setShabbatInfo] = useState(null);
   const [zmanimStatus, setZmanimStatus] = useState("טוען זמני היום לירושלים...");
   const [zmanimLocation, setZmanimLocation] = useState(JERUSALEM);
   const [showAllZmanim, setShowAllZmanim] = useState(false);
@@ -203,21 +231,27 @@ export default function App() {
   }, []);
 
   async function loadZmanim(location, successMessage) {
-    setZmanimStatus("טוען זמני היום...");
+    setZmanimStatus("טוען זמני היום וזמני שבת...");
 
     try {
-      const response = await fetch(buildHebcalApiUrl(location, today));
+      const [zmanimResponse, shabbatResponse] = await Promise.all([
+        fetch(buildHebcalApiUrl(location, today)),
+        fetch(buildShabbatApiUrl(location)),
+      ]);
 
-      if (!response.ok) {
+      if (!zmanimResponse.ok || !shabbatResponse.ok) {
         throw new Error("zmanim request failed");
       }
 
-      const data = await response.json();
-      setZmanim(data);
+      const zmanimData = await zmanimResponse.json();
+      const shabbatData = await shabbatResponse.json();
+
+      setZmanim(zmanimData);
+      setShabbatInfo(getShabbatInfo(shabbatData));
       setZmanimLocation(location);
       setZmanimStatus(successMessage);
     } catch {
-      setZmanimStatus("לא הצלחנו לטעון זמני היום. אפשר לפתוח את Hebcal בכפתור למטה.");
+      setZmanimStatus("לא הצלחנו לטעון את זמני השבת. אפשר לפתוח את כיפה בקישור למטה.");
     }
   }
 
@@ -278,10 +312,6 @@ export default function App() {
     setStatus("כיול נשמר - החזק את ראש הטלפון לכיוון צפון בעת הכיול");
   }
 
-  function resetCalibration() {
-    setCalibrationOffset(0);
-    setStatus("הכיול אופס");
-  }
 
 
   function selectCity(location) {
@@ -337,7 +367,7 @@ export default function App() {
     const centerY = rect.top + rect.height / 2;
     const x = event.clientX - centerX;
     const y = event.clientY - centerY;
-    const angle = normalizeAngle((Math.atan2(x, -y) * 180) / Math.PI);
+    const angle = normalizeAngle((-Math.atan2(x, -y) * 180) / Math.PI);
 
     setManualHeading(angle);
   }
@@ -395,10 +425,6 @@ export default function App() {
               <strong>{jerusalemBearing === null ? "ממתין להפעלה" : "פעיל"}</strong>
             </div>
 
-            <button className="mainButton topAction" onClick={activateCompass}>
-              {isManualMode ? "חשב כיוון לירושלים" : "הפעל כיוון לירושלים"}
-            </button>
-
             <div className="modeSwitch" aria-label="בחירת מצב מצפן">
               <button
                 type="button"
@@ -431,6 +457,18 @@ export default function App() {
                   aria-label="כיוון צפון ידני"
                 />
                 <p>גרור את המצפן או הזז את המחוון עד שהאות N פונה לצפון אמיתי.</p>
+                <button className="mainButton manualAction" onClick={activateCompass}>
+                  חשב כיוון לירושלים
+                </button>
+              </div>
+            )}
+
+            {!isManualMode && (
+              <div className="autoActionPanel">
+                <p>הפעל את החיישנים כדי לחשב את כיוון ירושלים אוטומטית.</p>
+                <button className="mainButton manualAction" onClick={activateCompass}>
+                  הפעל כיוון לירושלים
+                </button>
               </div>
             )}
 
@@ -453,7 +491,7 @@ export default function App() {
                   {Array.from({ length: 72 }).map((_, i) => (
                     <span
                       key={i}
-                      className={i % 6 === 0 ? "tick big" : "tick"}
+                      className={i % 18 === 0 ? "tick cardinal" : i % 6 === 0 ? "tick big" : "tick"}
                       style={{ transform: "rotate(" + i * 5 + "deg)" }}
                     />
                   ))}
@@ -518,12 +556,6 @@ export default function App() {
                 </div>
               )}
 
-              {!isManualMode && (
-                <div>
-                  <span>כיול ידני</span>
-                  <strong>{Math.round(shortestAngleDiff(0, calibrationOffset))}°</strong>
-                </div>
-              )}
 
               {jerusalemRelative !== null && (
                 <div>
@@ -544,21 +576,10 @@ export default function App() {
 
               {!isManualMode && sensorSource.includes("יחסי") && hasCompass && (
                 <p className="warning">
-                  החיישן במכשיר הזה יחסי, ולכן ייתכן זיוף. כוון את ראש הטלפון
-                  לצפון ולחץ “כוון כצפון”.
+                  החיישן במכשיר הזה יחסי, ולכן ייתכן זיוף. מומלץ לעבור למצב ידני.
                 </p>
               )}
             </div>
-
-            {!isManualMode && (
-              <div className="calibrationPanel">
-              <p>אם החץ הכחול לא יושב על צפון, כוון את ראש הטלפון לצפון ולחץ כיול.</p>
-              <div className="calibrationActions simple">
-                <button type="button" onClick={calibrateNorth}>כוון כצפון</button>
-                <button type="button" onClick={resetCalibration}>איפוס כיול</button>
-              </div>
-            </div>
-            )}
           </section>
 
           <section
@@ -569,8 +590,18 @@ export default function App() {
               <strong>{zmanimLocation.label}</strong>
             </div>
 
-            <div className="zmanimIntro">
-              <h2>זמנים עיקריים להיום</h2>
+            <div className="zmanimIntro shabbatIntro">
+              <h2>זמנים עיקריים לשבת {shabbatInfo?.parsha || "השבוע"}</h2>
+              <div className="shabbatTimes">
+                <div>
+                  <span>הדלקת נרות</span>
+                  <strong>{formatTime(shabbatInfo?.candles)}</strong>
+                </div>
+                <div>
+                  <span>יציאת שבת</span>
+                  <strong>{formatTime(shabbatInfo?.havdalah)}</strong>
+                </div>
+              </div>
               <p>{zmanimStatus}</p>
             </div>
 

@@ -218,13 +218,14 @@ a {
 .marker {
   position: absolute;
   z-index: 7;
-  color: #33485e;
-  font-size: 19px;
-  font-weight: 900;
+  color: #203a54;
+  font-size: 20px;
+  font-weight: 950;
+  text-shadow: 0 2px 10px rgba(20, 60, 84, 0.16);
 }
 
 .north {
-  top: 18px;
+  top: 31px;
   left: 50%;
   transform: translateX(-50%);
   color: #087b9f;
@@ -232,19 +233,19 @@ a {
 }
 
 .south {
-  bottom: 18px;
+  bottom: 31px;
   left: 50%;
   transform: translateX(-50%);
 }
 
 .east {
-  right: 22px;
+  right: 36px;
   top: 50%;
   transform: translateY(-50%);
 }
 
 .west {
-  left: 22px;
+  left: 36px;
   top: 50%;
   transform: translateY(-50%);
 }
@@ -270,7 +271,15 @@ a {
 .tick.big {
   width: 3px;
   height: 18px;
-  background: rgba(42, 74, 95, 0.5);
+  background: rgba(42, 74, 95, 0.52);
+}
+
+.tick.cardinal {
+  width: 4px;
+  height: 25px;
+  top: 4px;
+  background: linear-gradient(to bottom, #087b9f, rgba(8, 123, 159, 0.45));
+  box-shadow: 0 3px 10px rgba(8, 123, 159, 0.18);
 }
 
 .arrow {
@@ -769,4 +778,82 @@ a {
 
 .manualEditable::selection {
   background: transparent;
+}
+
+
+.shabbatIntro h2 {
+  margin-bottom: 14px;
+}
+
+.shabbatTimes {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.shabbatTimes div {
+  padding: 13px 14px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  text-align: center;
+}
+
+.shabbatTimes span {
+  display: block;
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.shabbatTimes strong {
+  display: block;
+  margin-top: 5px;
+  color: #ffffff;
+  font-size: 24px;
+  line-height: 1;
+}
+
+@media (max-width: 520px) {
+  .shabbatTimes {
+    grid-template-columns: 1fr;
+  }
+}
+
+
+.calibrationActions.single {
+  grid-template-columns: minmax(180px, 260px);
+  justify-content: center;
+}
+
+.calibrationActions.single button {
+  width: 100%;
+}
+
+
+.manualAction {
+  width: 100%;
+  min-height: 44px;
+  margin-top: 2px;
+  border-radius: 14px;
+  font-size: 15px;
+}
+
+
+.autoActionPanel {
+  display: grid;
+  gap: 10px;
+  margin: 0 0 14px;
+  padding: 14px;
+  border: 1px solid rgba(25, 97, 116, 0.1);
+  border-radius: 18px;
+  background: rgba(235, 248, 251, 0.86);
+}
+
+.autoActionPanel p {
+  margin: 0;
+  color: #617082;
+  font-size: 13px;
+  text-align: center;
 }
