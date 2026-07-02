@@ -10,11 +10,15 @@ const JERUSALEM = {
 const ZMANIM_TO_SHOW = [
   { key: "alotHaShachar", label: "עלות השחר", detail: "תחילת האור" },
   { key: "sunrise", label: "הנץ החמה", detail: "זריחה" },
-  { key: "sofZmanShma", label: "סוף זמן שמע", detail: "לפי הגר\"א" },
   { key: "chatzot", label: "חצות היום", detail: "אמצע היום" },
-  { key: "minchaGedola", label: "מנחה גדולה", detail: "תחילת זמן מנחה" },
   { key: "sunset", label: "שקיעה", detail: "סוף היום" },
-  { key: "tzeit85deg", label: "צאת הכוכבים", detail: "8.5 מעלות" },
+];
+
+const CITY_LOCATIONS = [
+  { label: "ירושלים", lat: 31.7683, lng: 35.2137 },
+  { label: "תל אביב", lat: 32.0853, lng: 34.7818 },
+  { label: "חיפה", lat: 32.794, lng: 34.9896 },
+  { label: "באר שבע", lat: 31.2529, lng: 34.7915 },
 ];
 
 const FULL_ZMANIM_TO_SHOW = [
@@ -130,6 +134,7 @@ export default function App() {
   const [zmanimStatus, setZmanimStatus] = useState("טוען זמני היום לירושלים...");
   const [zmanimLocation, setZmanimLocation] = useState(JERUSALEM);
   const [showAllZmanim, setShowAllZmanim] = useState(false);
+  const [selectedCity, setSelectedCity] = useState(JERUSALEM.label);
   const [sensorSource, setSensorSource] = useState("ממתין לחיישן");
   const [sensorAccuracy, setSensorAccuracy] = useState(null);
   const [calibrationOffset, setCalibrationOffset] = useState(getInitialCalibrationOffset);
@@ -273,8 +278,11 @@ export default function App() {
     setStatus("הכיול אופס");
   }
 
-  function nudgeCalibration(amount) {
-    setCalibrationOffset((current) => normalizeAngle(current + amount));
+
+  function selectCity(location) {
+    setSelectedCity(location.label);
+    setShowAllZmanim(false);
+    loadZmanim(location, "זמני היום ל" + location.label + " נטענו");
   }
 
   function useCurrentLocationForZmanim() {
@@ -288,6 +296,8 @@ export default function App() {
           label: "המיקום שלך",
         };
 
+        setSelectedCity("המיקום שלי");
+        setShowAllZmanim(false);
         loadZmanim(location, "זמני היום לפי המיקום שלך נטענו");
       },
       () => {
@@ -309,6 +319,9 @@ export default function App() {
     jerusalemBearing === null
       ? null
       : shortestAngleDiff(heading, jerusalemBearing);
+
+  const isFacingJerusalem =
+    jerusalemRelative !== null && Math.abs(jerusalemRelative) <= 5;
 
   return (
     <main className="app">
@@ -347,6 +360,10 @@ export default function App() {
               <span>כיוון תפילה</span>
               <strong>{jerusalemBearing === null ? "ממתין להפעלה" : "פעיל"}</strong>
             </div>
+
+            <button className="mainButton topAction" onClick={activateCompass}>
+              הפעל כיוון לירושלים
+            </button>
 
             <div className="compassWrap">
               <div className="compass" aria-label="מצפן ירושלים">
@@ -389,9 +406,20 @@ export default function App() {
               </div>
             </div>
 
-            <button className="mainButton" onClick={activateCompass}>
-              הפעל כיוון לירושלים
-            </button>
+            {jerusalemRelative !== null && (
+              <div className={isFacingJerusalem ? "alignment good" : "alignment"}>
+                <strong>
+                  {isFacingJerusalem ? "אתה מכוון לירושלים" : "עדיין צריך לכוון"}
+                </strong>
+                <span>
+                  {isFacingJerusalem
+                    ? "החץ הזהוב כמעט ישר קדימה"
+                    : jerusalemRelative > 0
+                      ? "סובב מעט ימינה"
+                      : "סובב מעט שמאלה"}
+                </span>
+              </div>
+            )}
 
             <div className="infoPanel">
               <div>
@@ -444,11 +472,9 @@ export default function App() {
 
             <div className="calibrationPanel">
               <p>אם החץ הכחול לא יושב על צפון, כוון את ראש הטלפון לצפון ולחץ כיול.</p>
-              <div className="calibrationActions">
+              <div className="calibrationActions simple">
                 <button type="button" onClick={calibrateNorth}>כוון כצפון</button>
-                <button type="button" onClick={() => nudgeCalibration(-5)}>5°-</button>
-                <button type="button" onClick={() => nudgeCalibration(5)}>5°+</button>
-                <button type="button" onClick={resetCalibration}>איפוס</button>
+                <button type="button" onClick={resetCalibration}>איפוס כיול</button>
               </div>
             </div>
           </section>
@@ -462,11 +488,24 @@ export default function App() {
             </div>
 
             <div className="zmanimIntro">
-              <h2>זמנים מרכזיים להיום</h2>
+              <h2>זמנים עיקריים להיום</h2>
               <p>{zmanimStatus}</p>
             </div>
 
-            <div className="zmanimList">
+            <div className="cityPicker" aria-label="בחירת עיר לזמני היום">
+              {CITY_LOCATIONS.map((city) => (
+                <button
+                  key={city.label}
+                  className={selectedCity === city.label ? "active" : ""}
+                  type="button"
+                  onClick={() => selectCity(city)}
+                >
+                  {city.label}
+                </button>
+              ))}
+            </div>
+
+            <div className="zmanimList primaryTimes">
               {ZMANIM_TO_SHOW.map((item) => (
                 <div className="zmanCard" key={item.key}>
                   <span>{item.label}</span>
@@ -476,15 +515,12 @@ export default function App() {
               ))}
             </div>
 
-            <div className="actionsRow">
-              <button className="secondaryButton" onClick={useCurrentLocationForZmanim}>
-                הצג לפי המיקום שלי
-              </button>
+            <div className="actionsRow zmanimActions singleAction">
               <button
                 className="linkButton"
                 onClick={() => setShowAllZmanim((current) => !current)}
               >
-                {showAllZmanim ? "הסתר זמנים מלאים" : "הצג זמנים מלאים כאן"}
+                {showAllZmanim ? "הסתר רשימה מלאה" : "רשימת הזמנים המלאה"}
               </button>
             </div>
 
@@ -500,8 +536,7 @@ export default function App() {
             )}
 
             <p className="sourceNote">
-              הזמנים נטענים מ-Hebcal, ומיועדים לתצוגה מהירה. אם פתיחת אתר חיצוני
-              נחסמת, הרשימה המלאה זמינה כאן באפליקציה.
+              הזמנים נטענים מ-Hebcal. בחירת עיר לא מבקשת הרשאת מיקום, והרשימה המלאה זמינה כאן באפליקציה.
               <a href={hebcalPageUrl} target="_blank" rel="noreferrer"> מקור: Hebcal</a>
             </p>
           </section>
